@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Denetleme Sistemi - Full Saha</title>
+<title>Denetleme Sistemi - Full</title>
 
 <!-- Firebase -->
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
@@ -166,7 +166,6 @@ function checkGuard(tc){
   db.collection("projects").doc(selectedProject).collection("guards").doc(tc).get()
   .then(doc=>{
     if(!doc.exists) return alert("Sistem kayıtlı değil!");
-
     const data = doc.data();
     let eksik = [];
 
@@ -186,64 +185,89 @@ function checkGuard(tc){
 // Eksik bilgi ekranı
 function showMissingInfo(tc, eksik){
   qrPage.classList.add("hidden");
+  guardInfoPage.classList.add("hidden");
   missingInfoPage.classList.remove("hidden");
   missingFields.innerHTML = "";
 
   eksik.forEach(field=>{
     const btn = document.createElement("button");
-    btn.innerText = `Eksik: ${field} → Ekle / Düzenle`;
+    btn.innerText = `Eksik: ${field} → Düzenle / Kaydet`;
     btn.onclick = ()=> fillMissingField(tc, field);
     missingFields.appendChild(btn);
   });
 }
 
-// Eksik alan doldurma (basit örnek)
+// Eksik alan doldurma
 function fillMissingField(tc, field){
+  missingFields.innerHTML = ""; // eski inputları temizle
+
   if(field === "Profil Fotoğrafı"){
     const fileInput = document.createElement("input");
-    fileInput.type="file";
-    fileInput.accept="image/*";
-    fileInput.onchange = e=>{
-      const file = e.target.files[0];
+    fileInput.type = "file";
+    fileInput.accept = "image/*";
+
+    const saveBtn = document.createElement("button");
+    saveBtn.innerText = "Kaydet";
+
+    saveBtn.onclick = ()=>{
+      const file = fileInput.files[0];
+      if(!file) return alert("Lütfen bir dosya seçin!");
       const storageRef = storage.ref().child(`profile_photos/${tc}.jpg`);
-      storageRef.put(file).then(()=> storageRef.getDownloadURL()
-        .then(url=>{
+      storageRef.put(file).then(()=>{
+        storageRef.getDownloadURL().then(url=>{
           db.collection("projects").doc(selectedProject).collection("guards").doc(tc)
-          .update({profilFoto: url}).then(()=>checkGuard(tc));
-        })
-      );
+          .update({profilFoto: url})
+          .then(()=>{
+            alert("Profil fotoğrafı kaydedildi ✅");
+            checkGuard(tc);
+          });
+        });
+      });
     };
+
     missingFields.appendChild(fileInput);
+    missingFields.appendChild(saveBtn);
+
   } else {
     const input = document.createElement("input");
     input.placeholder = field;
-    const btn = document.createElement("button");
-    btn.innerText = "Kaydet";
-    btn.onclick = ()=>{
-      const value = input.value;
+
+    const saveBtn = document.createElement("button");
+    saveBtn.innerText = "Kaydet";
+
+    saveBtn.onclick = ()=>{
+      const value = input.value.trim();
+      if(!value) return alert("Alan boş olamaz!");
       let updateObj = {};
-      if(field==="Kimlik Türü") updateObj.kimlikTuru=value;
-      if(field==="Kimlik Geçerlilik Süresi") updateObj.kimlikGecerlilik=value;
-      if(field==="Silah Durumu / Türü") updateObj.silahDurumu=value;
+      if(field === "Kimlik Türü") updateObj.kimlikTuru = value;
+      if(field === "Kimlik Geçerlilik Süresi") updateObj.kimlikGecerlilik = value;
+      if(field === "Silah Durumu / Türü") updateObj.silahDurumu = value;
+
       db.collection("projects").doc(selectedProject).collection("guards").doc(tc)
-      .update(updateObj).then(()=>checkGuard(tc));
+      .update(updateObj)
+      .then(()=>{
+        alert(`${field} kaydedildi ✅`);
+        checkGuard(tc);
+      });
     };
+
     missingFields.appendChild(input);
-    missingFields.appendChild(btn);
+    missingFields.appendChild(saveBtn);
   }
 }
 
 // Guard kartı göster
 function showGuardCard(tc, data){
   missingInfoPage.classList.add("hidden");
+  qrPage.classList.add("hidden");
   guardInfoPage.classList.remove("hidden");
 
-  guardPhoto.src = data.profilFoto;
-  infoAdSoyad.innerText = data.adSoyad;
-  infoKimlikTuru.innerText = data.kimlikTuru;
-  infoKartGecerlilik.innerText = data.kimlikGecerlilik;
+  guardPhoto.src = data.profilFoto || "";
+  infoAdSoyad.innerText = data.adSoyad || "";
+  infoKimlikTuru.innerText = data.kimlikTuru || "";
+  infoKartGecerlilik.innerText = data.kimlikGecerlilik || "";
   infoProje.innerText = data.projectName || "";
-  infoSilah.innerText = data.silahDurumu;
+  infoSilah.innerText = data.silahDurumu || "";
 
   denetimButtons.classList.remove("hidden");
 }
