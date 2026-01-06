@@ -5,12 +5,9 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Denetleme Sistemi - Full</title>
 
-<!-- Firebase -->
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-storage-compat.js"></script>
-
-<!-- QR Kod -->
 <script src="https://unpkg.com/html5-qrcode"></script>
 
 <style>
@@ -30,49 +27,41 @@ img{width:100px;border-radius:8px;margin-top:5px}
 <h2>Denetleme Sistemi - Full</h2>
 </header>
 
-<!-- Proje Seçimi -->
 <section id="projectPage">
-  <h3>Proje Seç</h3>
-  <select id="projectSelect">
-    <option value="">Proje seçiniz</option>
-  </select>
-  <button onclick="loadProject()">Projeyi Yükle</button>
+<h3>Proje Seç</h3>
+<select id="projectSelect"><option value="">Proje seçiniz</option></select>
+<button onclick="loadProject()">Projeyi Yükle</button>
 </section>
 
-<!-- Güvenlik Listesi -->
 <section id="personelPage" class="hidden">
-  <h3 id="projectTitle"></h3>
-  <div id="personelList"></div>
-  <button onclick="startInspection()">Denetlemeye Başla</button>
+<h3 id="projectTitle"></h3>
+<div id="personelList"></div>
+<button onclick="startInspection()">Denetlemeye Başla</button>
 </section>
 
-<!-- QR Okuma -->
 <section id="qrPage" class="hidden">
-  <h3>QR Kod Tara</h3>
-  <div id="qr-reader" style="width:300px;"></div>
-  <div id="qrStatus"></div>
+<h3>QR Kod Tara</h3>
+<div id="qr-reader" style="width:300px;"></div>
 </section>
 
-<!-- Eksik Bilgi Ekranı -->
 <section id="missingInfoPage" class="hidden">
-  <h3>Eksik Bilgi</h3>
-  <div id="missingFields"></div>
+<h3>Eksik Bilgi</h3>
+<div id="missingFields"></div>
 </section>
 
-<!-- Bilgi Kartı -->
 <section id="guardInfoPage" class="hidden">
-  <h3>Güvenlik Kartı</h3>
-  <img id="guardPhoto" src="" alt="Profil Foto">
-  <div>Ad Soyad: <span id="infoAdSoyad"></span></div>
-  <div>TC: <span id="infoTC"></span></div>
-  <div>Telefon: <span id="infoTelefon"></span></div>
-  <div>Güvenlik Tipi: <span id="infoTip"></span></div>
-  <div>Kart Son Kullanım: <span id="infoKart"></span></div>
-  <div id="denetimButtons" class="hidden">
-    <button onclick="markInspection('gorevi_basinda')">Görevi Başında</button>
-    <button onclick="markInspection('uyuyor')">Uyuyor</button>
-    <button onclick="markInspection('uygunsuz')">Uygunsuz</button>
-  </div>
+<h3>Güvenlik Kartı</h3>
+<img id="guardPhoto" src="" alt="Profil Foto">
+<div>Ad Soyad: <span id="infoAdSoyad"></span></div>
+<div>TC: <span id="infoTC"></span></div>
+<div>Telefon: <span id="infoTelefon"></span></div>
+<div>Güvenlik Tipi: <span id="infoTip"></span></div>
+<div>Kart Son Kullanım: <span id="infoKart"></span></div>
+<div id="denetimButtons" class="hidden">
+<button onclick="markInspection('gorevi_basinda')">Görevi Başında</button>
+<button onclick="markInspection('uyuyor')">Uyuyor</button>
+<button onclick="markInspection('uygunsuz')">Uygunsuz</button>
+</div>
 </section>
 
 <script>
@@ -87,7 +76,6 @@ firebase.initializeApp(firebaseConfig);
 const db = firebase.firestore();
 const storage = firebase.storage();
 
-// DOM
 const projectSelect = document.getElementById("projectSelect");
 const projectPage = document.getElementById("projectPage");
 const personelPage = document.getElementById("personelPage");
@@ -171,6 +159,7 @@ function checkGuard(tc){
     if(!data.profilFotoUrl) eksik.push("Profil Fotoğrafı");
     if(!data.guvenlikTipi) eksik.push("Güvenlik Tipi");
     if(!data.kartSonKullanim) eksik.push("Kart Son Kullanım");
+    if(!data.telefon) eksik.push("Telefon");
 
     if(eksik.length>0){
       showMissingInfo(tc, eksik);
@@ -180,7 +169,7 @@ function checkGuard(tc){
   });
 }
 
-// Eksik bilgi ekranı
+// Eksik alan ekranı
 function showMissingInfo(tc, eksik){
   qrPage.classList.add("hidden");
   guardInfoPage.classList.add("hidden");
@@ -188,89 +177,62 @@ function showMissingInfo(tc, eksik){
   missingFields.innerHTML = "";
 
   eksik.forEach(field=>{
-    const btn = document.createElement("button");
-    btn.innerText = `Eksik: ${field} → Düzenle / Kaydet`;
-    btn.onclick = ()=> fillMissingField(tc, field);
-    missingFields.appendChild(btn);
+    if(field==="Profil Fotoğrafı"){
+      const fileInput = document.createElement("input");
+      fileInput.type="file";
+      fileInput.accept="image/*";
+      fileInput.onchange = async e=>{
+        const file = e.target.files[0];
+        if(!file) return;
+        const storageRef = storage.ref(`profile_photos/${tc}.jpg`);
+        try{
+          await storageRef.put(file);
+          const url = await storageRef.getDownloadURL();
+          await db.collection("projects").doc(selectedProject)
+                  .collection("guards").doc(tc)
+                  .update({profilFotoUrl: url});
+          alert("✅ Fotoğraf otomatik kaydedildi!");
+          checkGuard(tc);
+        } catch(err){console.error(err); alert("❌ Kaydedilemedi");}
+      };
+      missingFields.appendChild(fileInput);
+    }
+    else if(field==="Güvenlik Tipi"){
+      const select = document.createElement("select");
+      ["Silahlı","Silahsız"].forEach(opt=>{
+        const option = document.createElement("option");
+        option.value = opt; option.innerText = opt;
+        select.appendChild(option);
+      });
+      select.onchange = async e=>{
+        await db.collection("projects").doc(selectedProject)
+          .collection("guards").doc(tc)
+          .update({guvenlikTipi: e.target.value});
+        checkGuard(tc);
+      }
+      missingFields.appendChild(select);
+    }
+    else if(field==="Kart Son Kullanım"){
+      const input = document.createElement("input"); input.type="date";
+      input.onchange = async e=>{
+        await db.collection("projects").doc(selectedProject)
+          .collection("guards").doc(tc)
+          .update({kartSonKullanim: e.target.value});
+        checkGuard(tc);
+      }
+      missingFields.appendChild(input);
+    }
+    else if(field==="Telefon"){
+      const input = document.createElement("input"); input.type="tel"; input.placeholder="Telefon numarası";
+      input.onchange = async e=>{
+        await db.collection("projects").doc(selectedProject)
+          .collection("guards").doc(tc)
+          .update({telefon: e.target.value});
+        checkGuard(tc);
+      }
+      missingFields.appendChild(input);
+    }
   });
-}
-
-// Eksik alan doldurma
-function fillMissingField(tc, field){
-  missingFields.innerHTML = ""; // eski inputları temizle
-
-  if(field === "Profil Fotoğrafı"){
-    const fileInput = document.createElement("input");
-    fileInput.type = "file";
-    fileInput.accept = "image/*";
-
-    const saveBtn = document.createElement("button");
-    saveBtn.innerText = "Kaydet";
-
-    saveBtn.onclick = ()=>{
-      const file = fileInput.files[0];
-      if(!file) return alert("Lütfen bir dosya seçin!");
-      const storageRef = storage.ref().child(`profile_photos/${tc}.jpg`);
-      storageRef.put(file).then(()=>{
-        storageRef.getDownloadURL().then(url=>{
-          db.collection("projects").doc(selectedProject).collection("guards").doc(tc)
-          .update({profilFotoUrl: url})
-          .then(()=>{
-            alert("Profil fotoğrafı kaydedildi ✅");
-            checkGuard(tc);
-          });
-        });
-      });
-    };
-
-    missingFields.appendChild(fileInput);
-    missingFields.appendChild(saveBtn);
-
-  } else if(field === "Güvenlik Tipi"){
-    const select = document.createElement("select");
-    ["Silahlı","Silahsız"].forEach(opt=>{
-      const option = document.createElement("option");
-      option.value = opt;
-      option.innerText = opt;
-      select.appendChild(option);
-    });
-
-    const saveBtn = document.createElement("button");
-    saveBtn.innerText = "Kaydet";
-    saveBtn.onclick = ()=>{
-      const value = select.value;
-      if(!value) return alert("Lütfen bir seçenek seçin!");
-      db.collection("projects").doc(selectedProject).collection("guards").doc(tc)
-      .update({guvenlikTipi: value})
-      .then(()=>{
-        alert("Güvenlik Tipi kaydedildi ✅");
-        checkGuard(tc);
-      });
-    };
-
-    missingFields.appendChild(select);
-    missingFields.appendChild(saveBtn);
-
-  } else if(field === "Kart Son Kullanım"){
-    const input = document.createElement("input");
-    input.type = "date";
-
-    const saveBtn = document.createElement("button");
-    saveBtn.innerText = "Kaydet";
-    saveBtn.onclick = ()=>{
-      const value = input.value;
-      if(!value) return alert("Lütfen bir tarih seçin!");
-      db.collection("projects").doc(selectedProject).collection("guards").doc(tc)
-      .update({kartSonKullanim: value})
-      .then(()=>{
-        alert("Kart Son Kullanım kaydedildi ✅");
-        checkGuard(tc);
-      });
-    };
-
-    missingFields.appendChild(input);
-    missingFields.appendChild(saveBtn);
-  }
 }
 
 // Guard kartı göster
@@ -302,6 +264,5 @@ function markInspection(durum){
     });
 }
 </script>
-
 </body>
 </html>
