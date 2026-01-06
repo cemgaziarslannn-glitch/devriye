@@ -20,7 +20,6 @@ section{padding:15px}
 select,input,button{width:100%;padding:10px;margin-top:10px;border-radius:6px;border:none}
 button{background:#1e88e5;color:#fff;font-weight:bold;cursor:pointer}
 .card{background:#132b3f;padding:12px;border-radius:10px;margin-top:10px}
-.badge{padding:4px 8px;border-radius:5px;font-size:12px}
 .hidden{display:none}
 img{width:100px;border-radius:8px;margin-top:5px}
 </style>
@@ -65,10 +64,10 @@ img{width:100px;border-radius:8px;margin-top:5px}
   <h3>Güvenlik Kartı</h3>
   <img id="guardPhoto" src="" alt="Profil Foto">
   <div>Ad Soyad: <span id="infoAdSoyad"></span></div>
-  <div>Kimlik Türü: <span id="infoKimlikTuru"></span></div>
-  <div>Kart Geçerlilik: <span id="infoKartGecerlilik"></span></div>
-  <div>Proje: <span id="infoProje"></span></div>
-  <div>Silah Durumu: <span id="infoSilah"></span></div>
+  <div>TC: <span id="infoTC"></span></div>
+  <div>Telefon: <span id="infoTelefon"></span></div>
+  <div>Güvenlik Tipi: <span id="infoTip"></span></div>
+  <div>Kart Son Kullanım: <span id="infoKart"></span></div>
   <div id="denetimButtons" class="hidden">
     <button onclick="markInspection('gorevi_basinda')">Görevi Başında</button>
     <button onclick="markInspection('uyuyor')">Uyuyor</button>
@@ -99,10 +98,10 @@ const missingFields = document.getElementById("missingFields");
 const personelList = document.getElementById("personelList");
 
 const infoAdSoyad = document.getElementById("infoAdSoyad");
-const infoKimlikTuru = document.getElementById("infoKimlikTuru");
-const infoKartGecerlilik = document.getElementById("infoKartGecerlilik");
-const infoProje = document.getElementById("infoProje");
-const infoSilah = document.getElementById("infoSilah");
+const infoTC = document.getElementById("infoTC");
+const infoTelefon = document.getElementById("infoTelefon");
+const infoTip = document.getElementById("infoTip");
+const infoKart = document.getElementById("infoKart");
 const guardPhoto = document.getElementById("guardPhoto");
 const denetimButtons = document.getElementById("denetimButtons");
 
@@ -169,10 +168,9 @@ function checkGuard(tc){
     const data = doc.data();
     let eksik = [];
 
-    if(!data.profilFoto) eksik.push("Profil Fotoğrafı");
-    if(!data.kimlikTuru) eksik.push("Kimlik Türü");
-    if(!data.kimlikGecerlilik) eksik.push("Kimlik Geçerlilik Süresi");
-    if(!data.silahDurumu) eksik.push("Silah Durumu / Türü");
+    if(!data.profilFotoUrl) eksik.push("Profil Fotoğrafı");
+    if(!data.guvenlikTipi) eksik.push("Güvenlik Tipi");
+    if(!data.kartSonKullanim) eksik.push("Kart Son Kullanım");
 
     if(eksik.length>0){
       showMissingInfo(tc, eksik);
@@ -216,7 +214,7 @@ function fillMissingField(tc, field){
       storageRef.put(file).then(()=>{
         storageRef.getDownloadURL().then(url=>{
           db.collection("projects").doc(selectedProject).collection("guards").doc(tc)
-          .update({profilFoto: url})
+          .update({profilFotoUrl: url})
           .then(()=>{
             alert("Profil fotoğrafı kaydedildi ✅");
             checkGuard(tc);
@@ -228,25 +226,44 @@ function fillMissingField(tc, field){
     missingFields.appendChild(fileInput);
     missingFields.appendChild(saveBtn);
 
-  } else {
-    const input = document.createElement("input");
-    input.placeholder = field;
+  } else if(field === "Güvenlik Tipi"){
+    const select = document.createElement("select");
+    ["Silahlı","Silahsız"].forEach(opt=>{
+      const option = document.createElement("option");
+      option.value = opt;
+      option.innerText = opt;
+      select.appendChild(option);
+    });
 
     const saveBtn = document.createElement("button");
     saveBtn.innerText = "Kaydet";
-
     saveBtn.onclick = ()=>{
-      const value = input.value.trim();
-      if(!value) return alert("Alan boş olamaz!");
-      let updateObj = {};
-      if(field === "Kimlik Türü") updateObj.kimlikTuru = value;
-      if(field === "Kimlik Geçerlilik Süresi") updateObj.kimlikGecerlilik = value;
-      if(field === "Silah Durumu / Türü") updateObj.silahDurumu = value;
-
+      const value = select.value;
+      if(!value) return alert("Lütfen bir seçenek seçin!");
       db.collection("projects").doc(selectedProject).collection("guards").doc(tc)
-      .update(updateObj)
+      .update({guvenlikTipi: value})
       .then(()=>{
-        alert(`${field} kaydedildi ✅`);
+        alert("Güvenlik Tipi kaydedildi ✅");
+        checkGuard(tc);
+      });
+    };
+
+    missingFields.appendChild(select);
+    missingFields.appendChild(saveBtn);
+
+  } else if(field === "Kart Son Kullanım"){
+    const input = document.createElement("input");
+    input.type = "date";
+
+    const saveBtn = document.createElement("button");
+    saveBtn.innerText = "Kaydet";
+    saveBtn.onclick = ()=>{
+      const value = input.value;
+      if(!value) return alert("Lütfen bir tarih seçin!");
+      db.collection("projects").doc(selectedProject).collection("guards").doc(tc)
+      .update({kartSonKullanim: value})
+      .then(()=>{
+        alert("Kart Son Kullanım kaydedildi ✅");
         checkGuard(tc);
       });
     };
@@ -262,12 +279,12 @@ function showGuardCard(tc, data){
   qrPage.classList.add("hidden");
   guardInfoPage.classList.remove("hidden");
 
-  guardPhoto.src = data.profilFoto || "";
+  guardPhoto.src = data.profilFotoUrl || "";
   infoAdSoyad.innerText = data.adSoyad || "";
-  infoKimlikTuru.innerText = data.kimlikTuru || "";
-  infoKartGecerlilik.innerText = data.kimlikGecerlilik || "";
-  infoProje.innerText = data.projectName || "";
-  infoSilah.innerText = data.silahDurumu || "";
+  infoTC.innerText = data.tc || "";
+  infoTelefon.innerText = data.telefon || "";
+  infoTip.innerText = data.guvenlikTipi || "";
+  infoKart.innerText = data.kartSonKullanim || "";
 
   denetimButtons.classList.remove("hidden");
 }
