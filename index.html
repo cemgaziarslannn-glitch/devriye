@@ -1,0 +1,265 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Denetleme Paneli - Full QR</title>
+
+<!-- Firebase -->
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+
+<!-- QR Kod Kütüphanesi -->
+<script src="https://unpkg.com/html5-qrcode"></script>
+
+<style>
+body{margin:0;font-family:Arial;background:#0b1a27;color:#fff}
+header{background:#081521;padding:15px;text-align:center}
+section{padding:15px}
+select,input,button{width:100%;padding:10px;margin-top:10px;border-radius:6px;border:none}
+button{background:#1e88e5;color:#fff;font-weight:bold;cursor:pointer}
+.card{background:#132b3f;padding:12px;border-radius:10px;margin-top:10px}
+.personel{display:flex;justify-content:space-between;align-items:center}
+.badge{padding:4px 8px;border-radius:5px;font-size:12px}
+.wait{background:#ff9800}
+.done{background:#4caf50}
+.hidden{display:none}
+img{width:100px;border-radius:8px;margin-top:5px}
+</style>
+</head>
+<body>
+
+<header>
+  <h2>Denetleme Sistemi Full</h2>
+</header>
+
+<section id="projectPage">
+  <h3>Proje Seç</h3>
+  <select id="projectSelect">
+    <option value="">Proje seçiniz</option>
+  </select>
+  <button onclick="loadProject()">Projeyi Yükle</button>
+</section>
+
+<section id="personelPage" class="hidden">
+  <h3 id="projectTitle"></h3>
+  <div id="personelList"></div>
+  <button onclick="startInspection()">Denetlemeye Başla</button>
+</section>
+
+<section id="qrPage" class="hidden">
+  <h3>QR Kod Tara</h3>
+  <div id="qr-reader" style="width:300px;"></div>
+  <div id="qrStatus"></div>
+</section>
+
+<section id="defineCardPage" class="hidden">
+  <h3>Kart Tanımla</h3>
+  <p>Okutulan QR tanımlı değil</p>
+  <div id="guardList"></div>
+</section>
+
+<section id="guardInfoPage" class="hidden">
+  <h3>Güvenlik Bilgi Kartı</h3>
+  <div>Ad Soyad: <span id="infoAdSoyad"></span></div>
+  <input type="text" id="infoTC" placeholder="TC Kimlik No">
+  <input type="date" id="infoKimlik" placeholder="Kimlik Geçerlilik Tarihi">
+  <input type="text" id="infoTel" placeholder="Telefon Numarası">
+  <input type="file" id="infoFoto">
+  <button onclick="saveGuardInfo()">Kartı Kaydet</button>
+  <div id="saveStatus"></div>
+</section>
+
+<script>
+// 🔥 Firebase
+const firebaseConfig = {
+  apiKey: "AIzaSyCye0QlekBFonTxfeBIlhLc9ia-mleyfUM",
+  authDomain: "denetleme-4d3d9.firebaseapp.com",
+  projectId: "denetleme-4d3d9"
+};
+firebase.initializeApp(firebaseConfig);
+const db = firebase.firestore();
+
+const projectSelect = document.getElementById("projectSelect");
+const projectPage = document.getElementById("projectPage");
+const personelPage = document.getElementById("personelPage");
+const qrPage = document.getElementById("qrPage");
+const defineCardPage = document.getElementById("defineCardPage");
+const guardInfoPage = document.getElementById("guardInfoPage");
+
+const projectTitle = document.getElementById("projectTitle");
+const personelList = document.getElementById("personelList");
+const qrStatus = document.getElementById("qrStatus");
+const guardList = document.getElementById("guardList");
+
+const infoAdSoyad = document.getElementById("infoAdSoyad");
+const infoTC = document.getElementById("infoTC");
+const infoKimlik = document.getElementById("infoKimlik");
+const infoTel = document.getElementById("infoTel");
+const infoFoto = document.getElementById("infoFoto");
+const saveStatus = document.getElementById("saveStatus");
+
+let selectedProject = null;
+let inspectionId = null;
+let lastScannedQR = null;
+let selectedGuardId = null;
+
+// 📥 PROJELERİ ÇEK
+db.collection("projects").get()
+.then(snapshot=>{
+  snapshot.forEach(doc=>{
+    const data = doc.data();
+    const opt = document.createElement("option");
+    opt.value = doc.id;
+    opt.textContent = data.projectName || "İsimsiz Proje";
+    projectSelect.appendChild(opt);
+  });
+});
+
+// 📂 PROJE + PERSONELLERİ YÜKLE
+function loadProject(){
+  const pid = projectSelect.value;
+  if(!pid) return alert("Proje seçiniz!");
+  selectedProject = pid;
+  personelList.innerHTML = "";
+
+  db.collection("projects").doc(pid).get()
+  .then(doc=>{
+    projectTitle.innerText = "Proje: " + (doc.data().projectName || "İsimsiz Proje");
+  });
+
+  db.collection("projects").doc(pid).collection("guards").get()
+  .then(snapshot=>{
+    snapshot.forEach(p=>{
+      const d = p.data();
+      personelList.innerHTML += `
+        <div class="card personel">
+          <div>${d.adSoyad || "İsimsiz"}</div>
+          <div class="badge wait">Denetlenmedi</div>
+        </div>
+      `;
+    });
+  });
+
+  projectPage.classList.add("hidden");
+  personelPage.classList.remove("hidden");
+}
+
+// ▶️ DENETİME BAŞLA → QR OKUMA
+function startInspection(){
+  personelPage.classList.add("hidden");
+  qrPage.classList.remove("hidden");
+  qrStatus.innerText = "";
+
+  const html5QrCode = new Html5Qrcode("qr-reader");
+  html5QrCode.start(
+    { facingMode: "environment" },
+    { fps: 10, qrbox: 250 },
+    (decodedText, decodedResult) => {
+      lastScannedQR = decodedText;
+      html5QrCode.stop();
+
+      // QR kontrol
+      db.collection("cards").doc(decodedText).get()
+      .then(doc=>{
+        if(doc.exists){
+          // Kart tanımlı → guard info aç
+          selectedGuardId = doc.data().guardId;
+          showGuardInfo(selectedGuardId);
+        } else {
+          // Kart tanımlı değil
+          showDefineCardPage();
+        }
+      });
+    },
+    (errorMessage) => { }
+  );
+}
+
+// 📋 TANIMSIZ QR → KART TANIMLA
+function showDefineCardPage(){
+  qrPage.classList.add("hidden");
+  defineCardPage.classList.remove("hidden");
+  guardList.innerHTML = "";
+
+  // Projedeki güvenlikleri listele
+  db.collection("projects").doc(selectedProject).collection("guards").get()
+  .then(snapshot=>{
+    snapshot.forEach(doc=>{
+      const d = doc.data();
+      const btn = document.createElement("button");
+      btn.innerText = d.adSoyad;
+      btn.onclick = () => defineCardToGuard(doc.id);
+      guardList.appendChild(btn);
+    });
+  });
+}
+
+function defineCardToGuard(guardId){
+  selectedGuardId = guardId;
+
+  // cards koleksiyonuna yaz
+  db.collection("cards").doc(lastScannedQR).set({
+    guardId: guardId,
+    projectId: selectedProject,
+    tanimli: true,
+    createdAt: firebase.firestore.FieldValue.serverTimestamp()
+  }).then(()=>{
+    // guards belgesini güncelle
+    db.collection("projects").doc(selectedProject)
+      .collection("guards").doc(guardId)
+      .update({ kartId: lastScannedQR, kartAktif: true })
+      .then(()=> showGuardInfo(guardId));
+  });
+}
+
+// 👤 GUARD INFO FORM
+function showGuardInfo(guardId){
+  defineCardPage.classList.add("hidden");
+  guardInfoPage.classList.remove("hidden");
+
+  db.collection("projects").doc(selectedProject)
+    .collection("guards").doc(guardId)
+    .get()
+    .then(doc=>{
+      const data = doc.data();
+      infoAdSoyad.innerText = data.adSoyad;
+      infoTC.value = data.tc || "";
+      infoKimlik.value = data.kimlikSonTarih || "";
+      infoTel.value = data.telefon || "";
+    });
+}
+
+// 💾 BİLGİLERİ KAYDET
+function saveGuardInfo(){
+  if(!selectedGuardId) return;
+
+  const file = infoFoto.files[0];
+  let fotoUrl = null;
+
+  const updateGuard = (url)=>{
+    db.collection("projects").doc(selectedProject)
+      .collection("guards").doc(selectedGuardId)
+      .update({
+        tc: infoTC.value,
+        kimlikSonTarih: infoKimlik.value,
+        telefon: infoTel.value,
+        fotoUrl: url
+      }).then(()=>{
+        saveStatus.innerText = "Kaydedildi ✅";
+      });
+  };
+
+  if(file){
+    // Basit Firebase Storage upload mantığı (buraya storage kodu eklenebilir)
+    // Şimdilik dummy url
+    fotoUrl = "https://dummyimage.com/100x100/000/fff";
+    updateGuard(fotoUrl);
+  } else {
+    updateGuard(null);
+  }
+}
+</script>
+
+</body>
+</html>
