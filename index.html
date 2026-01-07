@@ -233,8 +233,14 @@ h3{
 
 <section id="qrPage" class="hidden">
 <h3>QR Okut</h3>
+
 <div id="qr-reader" style="width:300px"></div>
+
+<button onclick="toggleFlash()">🔦 Flash Aç / Kapat</button>
+<button onclick="refocusCamera()">🎯 Odakla</button>
+
 </section>
+
 
 <section id="requiredPage" class="hidden">
 <h3>Zorunlu Bilgiler</h3>
@@ -306,6 +312,8 @@ const db=firebase.database();
 
 let proje="", aktifDevriyeId=null, tcNo="", guard={}, mevcutDenetimId=null, mode="new";
 let qrInstance = null;
+let flashOn = false;
+
 
 /* PROJELER */
 db.ref("projects").once("value",s=>{
@@ -764,6 +772,36 @@ function callGuard(tc){
     { text:"Ara", onClick:()=>{ window.location.href=`tel:${tel}` } }
    ]
   });
+ });
+}
+function toggleFlash(){
+ if(!qrInstance) return;
+
+ flashOn = !flashOn;
+
+ qrInstance.applyVideoConstraints({
+  advanced:[{ torch: flashOn }]
+ }).catch(err=>{
+  showAlert({
+   title:"Flash Desteklenmiyor",
+   message:"Bu cihaz flash kontrolünü desteklemiyor",
+   buttons:[{text:"Tamam"}]
+  });
+ });
+}
+function refocusCamera(){
+ if(!qrInstance) return;
+
+ qrInstance.stop().then(()=>{
+  qrInstance.start(
+   { facingMode:"environment" },
+   { fps:10, qrbox:250 },
+   t=>{
+    tcNo=t;
+    qrInstance.stop();
+    checkGuard();
+   }
+  );
  });
 }
 
