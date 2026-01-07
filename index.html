@@ -232,13 +232,38 @@ h3{
 </section>
 
 <section id="qrPage" class="hidden">
-<h3>QR Okut</h3>
 
-<div id="qr-reader" style="width:300px"></div>
+<!-- ÜST BAR -->
+<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+ <h3>📷 QR Okut</h3>
+ <button style="width:auto;padding:8px 12px;font-size:12px" onclick="openManual()">
+  🧍 Manuel Personel Tara
+ </button>
+</div>
 
-<button onclick="toggleFlash()">🔦 Flash Aç / Kapat</button>
-<button onclick="refocusCamera()">🎯 Odakla</button>
+<!-- KAMERA -->
+<div id="qr-reader" style="width:300px;margin:auto"></div>
 
+<!-- ALT BUTONLAR -->
+<div style="display:flex;gap:10px;margin-top:14px">
+ <button onclick="refocusCamera()">🎯 Odaklan</button>
+ <button onclick="toggleFlash()">🔦 Flash</button>
+</div>
+
+</section>
+
+<section id="manualPage" class="hidden">
+ <h3>🧍 Manuel Personel Tara</h3>
+
+ <input
+  id="manualTc"
+  placeholder="TC Kimlik No"
+  maxlength="11"
+  inputmode="numeric"
+ />
+
+ <button onclick="manualSearch()">Ara</button>
+ <button onclick="backToQr()">⬅ Geri</button>
 </section>
 
 
@@ -803,6 +828,35 @@ function refocusCamera(){
    }
   );
  });
+}
+function openManual(){
+ qrPage.classList.add("hidden");
+ manualPage.classList.remove("hidden");
+ manualTc.value="";
+ manualTc.focus();
+}
+
+function backToQr(){
+ manualPage.classList.add("hidden");
+ qrPage.classList.remove("hidden");
+}
+function manualSearch(){
+ const tc = manualTc.value.trim();
+
+ if(tc.length !== 11){
+  showAlert({
+   title:"Geçersiz TC",
+   message:"11 haneli TC gir",
+   buttons:[{text:"Tamam"}]
+  });
+  return;
+ }
+
+ tcNo = tc;
+
+ // QR OKUTULMUŞ GİBİ DAVRAN
+ manualPage.classList.add("hidden");
+ checkGuard();
 }
 
 </script>
