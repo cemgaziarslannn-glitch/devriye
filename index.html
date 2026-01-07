@@ -218,6 +218,7 @@ h3{
 
 <section id="listPage" class="hidden">
 <h2 id="projectTitle"></h2>
+
 <div id="lastPatrolInfo" class="last-patrol"></div>
 
 <h3 id="guardTitle" style="margin:14px 0 8px;font-size:15px;color:#8fdfff">
@@ -225,8 +226,8 @@ h3{
 </h3>
 
 <div id="guardList"></div>
-
-<button onclick="startPatrol()">🚀 Devriyeye Başla</button>
+<button onclick="backToProject()">⬅ Proje Seçimine Dön</button>
+<button onclick="startPatrol()">🚀 Denetleme Başlat</button>
 <button onclick="finishPatrol()">🏁 Denetlemeyi Bitir</button>
 
 </section>
@@ -857,6 +858,22 @@ function manualSearch(){
  tcNo = tc;
  manualPage.classList.add("hidden");
  checkGuard(); // QR okutmuş gibi devam eder
+}
+function backToProject(){
+
+ // Devriye başlamışsa GERİ DÖNME
+ if(aktifDevriyeId){
+  showAlert({
+   title:"Denetleme Devam Ediyor",
+   message:`📍 ${projectTitle.innerText} projesi için denetleme başlatıldı.\n\nDenetlemeyi bitirmeden proje seçimine dönemezsiniz.`,
+   buttons:[{text:"Tamam"}]
+  });
+  return;
+ }
+
+ // Devriye yoksa NORMAL GERİ DÖN
+ listPage.classList.add("hidden");
+ projectPage.classList.remove("hidden");
 }
 
 </script>
