@@ -233,6 +233,19 @@ h3{
 
 <section id="qrPage" class="hidden">
 <h3>QR Okut</h3>
+<button
+ onclick="openManual()"
+ style="
+  width:auto;
+  float:right;
+  padding:8px 14px;
+  font-size:12px;
+  margin-top:-34px
+ "
+>
+ 🧍 Manuel Personel Tara
+</button>
+
 
 <div id="qr-reader" style="width:300px"></div>
 
@@ -241,6 +254,19 @@ h3{
 
 </section>
 
+<section id="manualPage" class="hidden">
+<h3>🧍 Manuel Personel Tara</h3>
+
+<input
+ id="manualTc"
+ placeholder="TC Kimlik No"
+ maxlength="11"
+ inputmode="numeric"
+/>
+
+<button onclick="manualSearch()">Ara</button>
+<button onclick="backToQr()">⬅ QR Okutmaya Dön</button>
+</section>
 
 <section id="requiredPage" class="hidden">
 <h3>Zorunlu Bilgiler</h3>
@@ -803,6 +829,34 @@ function refocusCamera(){
    }
   );
  });
+}
+function openManual(){
+ qrPage.classList.add("hidden");
+ manualPage.classList.remove("hidden");
+ manualTc.value = "";
+ manualTc.focus();
+}
+
+function backToQr(){
+ manualPage.classList.add("hidden");
+ qrPage.classList.remove("hidden");
+}
+
+function manualSearch(){
+ const tc = manualTc.value.trim();
+
+ if(tc.length !== 11){
+  showAlert({
+   title:"Geçersiz TC",
+   message:"11 haneli TC gir",
+   buttons:[{text:"Tamam"}]
+  });
+  return;
+ }
+
+ tcNo = tc;
+ manualPage.classList.add("hidden");
+ checkGuard(); // QR okutmuş gibi devam eder
 }
 
 </script>
