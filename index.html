@@ -1011,9 +1011,10 @@ function openCameraForProfile(){
  if(!cameraAllowed) return;
  cameraAllowed = false;
 
- navigator.mediaDevices.getUserMedia({
-  video:{ facingMode:"user" }
- }).then(stream=>{
+navigator.mediaDevices.getUserMedia({
+ video:{ facingMode:{ exact:"environment" } }
+})
+.then(stream=>{
   cameraStream = stream;
   camera.srcObject = stream;
   cameraModal.classList.remove("hidden");
