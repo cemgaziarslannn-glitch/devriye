@@ -205,6 +205,7 @@ h3{
   transform:scale(1);
  }
 }
+.hidden{display:none !important}
 
 </style>
 </head>
@@ -325,14 +326,7 @@ h3{
 
 </div>
 
-<video id="camera" autoplay playsinline
- style="width:100%;border-radius:16px;margin-top:12px;display:none"></video>
 
-<button id="createPhotoBtn"
- onclick="captureProfilePhoto()"
- class="hidden">
- 📸 Profil Fotoğrafı Oluştur
-</button>
 
 
 
@@ -674,6 +668,12 @@ function showCard(){
  }else{
   guardPhoto.style.display = "none";
   photoPlus.style.display = "block";
+  photoWrapper.style.border = guard.photoBase64
+ ? "none"
+ : "2px dashed #00e5ff88";
+
+photoWrapper.style.pointerEvents = "auto";
+
  }
 
  photoWrapper.style.border = guard.photoBase64
@@ -954,6 +954,8 @@ function backToProject(){
 }
 
 let cameraStream = null;
+let cameraAllowed = false;
+
 
 /* FOTO SEÇENEKLERİ */
 function openPhotoOptions(){
@@ -969,51 +971,16 @@ function openPhotoOptions(){
    { text:"İptal" },
    {
     text: hasPhoto ? "Yeni Profil Fotoğrafı Koy" : "Ekle",
-    onClick: openCameraForProfile
+    onClick: () => {
+ cameraAllowed = true;
+ openCameraForProfile();
+}
+
    }
   ]
  });
 }
 
-/* KAMERA AÇ */
-function openCameraForProfile(){
- navigator.mediaDevices.getUserMedia({
-  video:{ facingMode:"environment" }
- }).then(stream=>{
-  cameraStream = stream;
-  camera.srcObject = stream;
-  camera.style.display = "block";
-  createPhotoBtn.classList.remove("hidden");
- }).catch(()=>{
-  showAlert({
-   title:"Kamera Hatası",
-   message:"Kamera açılamadı",
-   buttons:[{text:"Tamam"}]
-  });
- });
-}
-
-/* FOTO ÇEK + KAYDET */
-function captureProfilePhoto(){
-
- if(camera.videoWidth === 0){
-  showAlert({
-   title:"Kamera Hazır Değil",
-   message:"Kamera görüntüsü henüz alınamadı",
-   buttons:[{text:"Tamam"}]
-  });
-  return;
- }
-
- const canvas = document.createElement("canvas");
- canvas.width = camera.videoWidth;
- canvas.height = camera.videoHeight;
-
- const ctx = canvas.getContext("2d");
- ctx.drawImage(camera,0,0);
-
- saveProfilePhoto(canvas,0.8);
-}
 
 
 function saveProfilePhoto(canvas, quality){
@@ -1025,7 +992,7 @@ function saveProfilePhoto(canvas, quality){
   return saveProfilePhoto(canvas, quality - 0.1);
  }
 
- db.ref(`projects/${proje}/guards/${guard.tc}`).update({
+db.ref(`projects/${proje}/guards/${tcNo}`).update({
   photoBase64: base64
  }).then(()=>{
 
@@ -1033,18 +1000,76 @@ function saveProfilePhoto(canvas, quality){
   guardPhoto.src = base64;
   guardPhoto.style.display = "block";
   photoPlus.style.display = "none";
-
-  cameraStream.getTracks().forEach(t=>t.stop());
-  camera.srcObject = null;
-  camera.style.display = "none";
-  createPhotoBtn.classList.add("hidden");
-
   showAlert({
    title:"Başarılı",
    message:`Profil fotoğrafı kaydedildi (${sizeKB} KB)`,
    buttons:[{text:"Tamam"}]
   });
  });
+}
+function openCameraForProfile(){
+ if(!cameraAllowed) return;
+ cameraAllowed = false;
+
+ navigator.mediaDevices.getUserMedia({
+  video:{ facingMode:"user" }
+ }).then(stream=>{
+  cameraStream = stream;
+  camera.srcObject = stream;
+  cameraModal.classList.remove("hidden");
+ }).catch(()=>{
+  showAlert({
+   title:"Kamera Hatası",
+   message:"Kamera açılamadı",
+   buttons:[{text:"Tamam"}]
+  });
+ });
+}
+
+function captureProfilePhoto(){
+
+ const vw = camera.videoWidth;
+ const vh = camera.videoHeight;
+
+ if(!vw || !vh){
+  showAlert({
+   title:"Kamera Hazır Değil",
+   message:"Görüntü alınamadı",
+   buttons:[{text:"Tamam"}]
+  });
+  return;
+ }
+
+const guideSize = Math.min(camera.offsetWidth * 0.7, 240);
+ const scale = vw / camera.offsetWidth;
+
+ const size = guideSize * scale;
+ const sx = (vw - size) / 2;
+ const sy = (vh - size) / 2;
+
+ const canvas = document.createElement("canvas");
+ canvas.width = size;
+ canvas.height = size;
+
+ const ctx = canvas.getContext("2d");
+ ctx.drawImage(
+  camera,
+  sx, sy, size, size,
+  0, 0, size, size
+ );
+
+ saveProfilePhoto(canvas,0.85);
+ closeCameraModal();
+}
+
+function closeCameraModal(){
+ cameraAllowed = false;
+
+ cameraModal.classList.add("hidden");
+ if(cameraStream){
+  cameraStream.getTracks().forEach(t=>t.stop());
+ }
+ camera.srcObject = null;
 }
 
 </script>
@@ -1054,6 +1079,47 @@ function saveProfilePhoto(canvas, quality){
     <p id="alertMessage"></p>
     <div id="alertActions"></div>
   </div>
+</div>
+<!-- 📸 PROFİL FOTO KAMERA MODALI -->
+<div id="cameraModal" class="hidden"
+ style="
+  position:fixed;
+  inset:0;
+  background:rgba(0,0,0,.85);
+  align-items:center;
+  justify-content:center;
+  z-index:9999;
+ ">
+
+ <div style="position:relative;width:90%;max-width:360px;">
+
+  <video id="camera" autoplay playsinline
+   style="width:100%;border-radius:16px;object-fit:cover"></video>
+
+  <!-- 🔲 KARE REHBER -->
+  <div style="
+   position:absolute;
+   top:50%;
+   left:50%;
+   width:220px;
+   height:220px;
+   transform:translate(-50%,-50%);
+   border:3px solid #00e5ff;
+   border-radius:14px;
+   box-shadow:0 0 0 2000px rgba(0,0,0,.55);
+   pointer-events:none;
+  "></div>
+
+  <button onclick="captureProfilePhoto()" style="margin-top:14px;width:100%">
+   📸 Profil Fotoğrafı Oluştur
+  </button>
+
+  <button onclick="closeCameraModal()"
+   style="margin-top:8px;width:100%;background:#ff4d4d;color:#fff">
+   ❌ İptal
+  </button>
+
+ </div>
 </div>
 
 </body>
