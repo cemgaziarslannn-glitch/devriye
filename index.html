@@ -1011,7 +1011,9 @@ function openCameraForProfile(){
  cameraAllowed = false;
 
  navigator.mediaDevices.getUserMedia({
-  video:{ facingMode:"user" }
+video:{
+ facingMode:{ exact:"user" }
+}
  }).then(stream=>{
   cameraStream = stream;
   camera.srcObject = stream;
