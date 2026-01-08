@@ -991,21 +991,16 @@ function saveProfilePhoto(canvas, quality){
   return saveProfilePhoto(canvas, quality - 0.1);
  }
 
-db.ref(`projects/${proje}/guards/${tcNo}`).update({
+ return db.ref(`projects/${proje}/guards/${tcNo}`).update({
   photoBase64: base64
  }).then(()=>{
-
   guard.photoBase64 = base64;
   guardPhoto.src = base64;
   guardPhoto.style.display = "block";
   photoPlus.style.display = "none";
-  showAlert({
-   title:"Başarılı",
-   message:`Profil fotoğrafı kaydedildi (${sizeKB} KB)`,
-   buttons:[{text:"Tamam"}]
-  });
  });
 }
+
 function openCameraForProfile(){
  if(!cameraAllowed) return;
  cameraAllowed = false;
@@ -1042,39 +1037,24 @@ function captureProfilePhoto(){
 
  const vw = camera.videoWidth;
  const vh = camera.videoHeight;
-
- if(!vw || !vh){
-  showAlert({
-   title:"Kamera Hazır Değil",
-   message:"Görüntü alınamadı",
-   buttons:[{text:"Tamam"}]
-  });
-  return;
- }
+ if(!vw || !vh) return Promise.reject();
 
  const rect = camera.getBoundingClientRect();
-
- // rehber kare (CSS ile birebir)
  const guideSize = 220;
 
- // rehberin ekrandaki merkezi
  const guideCenterX = rect.width / 2;
  const guideCenterY = rect.height / 2;
 
- // video ve ekran oranları
  const videoRatio = vw / vh;
  const viewRatio  = rect.width / rect.height;
 
  let renderedW, renderedH, offsetX = 0, offsetY = 0;
 
- // 📌 object-fit: cover telafisi
  if(videoRatio > viewRatio){
-  // video yatay kırpılmış
   renderedH = rect.height;
   renderedW = renderedH * videoRatio;
   offsetX = (renderedW - rect.width) / 2;
  }else{
-  // video dikey kırpılmış (SENİN DURUMUN)
   renderedW = rect.width;
   renderedH = renderedW / videoRatio;
   offsetY = (renderedH - rect.height) / 2;
@@ -1083,13 +1063,8 @@ function captureProfilePhoto(){
  const scaleX = vw / renderedW;
  const scaleY = vh / renderedH;
 
- // rehberin video koordinatları
- const sx = Math.round(
-  (guideCenterX - guideSize/2 + offsetX) * scaleX
- );
- const sy = Math.round(
-  (guideCenterY - guideSize/2 + offsetY) * scaleY
- );
+ const sx = Math.round((guideCenterX - guideSize/2 + offsetX) * scaleX);
+ const sy = Math.round((guideCenterY - guideSize/2 + offsetY) * scaleY);
  const sSize = Math.round(guideSize * scaleX);
 
  const canvas = document.createElement("canvas");
@@ -1097,15 +1072,54 @@ function captureProfilePhoto(){
  canvas.height = sSize;
 
  const ctx = canvas.getContext("2d");
- ctx.drawImage(
-  camera,
-  sx, sy, sSize, sSize,
-  0, 0, sSize, sSize
- );
+ ctx.drawImage(camera, sx, sy, sSize, sSize, 0, 0, sSize, sSize);
 
- saveProfilePhoto(canvas, 0.85);
+ // 🔥 PROMISE DÖNDÜR
+ return saveProfilePhoto(canvas, 0.85);
 }
 
+
+function captureAndClose(){
+ captureProfilePhoto()
+  .then(()=>{
+   closeCameraModal();
+   showAlert({
+    title:"Başarılı",
+    message:"Profil fotoğrafı kaydedildi",
+    buttons:[{text:"Tamam"}]
+   });
+  })
+  .catch(()=>{
+   showAlert({
+    title:"Hata",
+    message:"Fotoğraf alınamadı",
+    buttons:[{text:"Tamam"}]
+   });
+  });
+}
+
+
+function closeCameraModal(){
+
+ const modal = document.getElementById("cameraModal");
+ const video = document.getElementById("camera");
+
+ // modalı kapat
+ modal.classList.add("hidden");
+ modal.style.display = "none";
+
+ // kamerayı durdur
+ if(cameraStream){
+  cameraStream.getTracks().forEach(t => t.stop());
+  cameraStream = null;
+ }
+
+ // video bağlantısını kes
+ if(video){
+  video.pause();
+  video.srcObject = null;
+ }
+}
 
 </script>
 <div id="appAlert" class="hidden">
