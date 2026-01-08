@@ -1010,22 +1010,30 @@ function openCameraForProfile(){
  if(!cameraAllowed) return;
  cameraAllowed = false;
 
+ // varsa önce eski kamerayı kapat
+ if(cameraStream){
+  cameraStream.getTracks().forEach(t=>t.stop());
+  cameraStream = null;
+ }
+
  navigator.mediaDevices.getUserMedia({
   video:{
-   facingMode:{ exact:"environment" } // 🔥 ARKA KAMERA
-  }
+   facingMode:{ ideal:"environment" } // ✅ ANDROID + IOS
+  },
+  audio:false
  }).then(stream=>{
   cameraStream = stream;
   camera.srcObject = stream;
 
   camera.onloadedmetadata = () => {
-   camera.play(); // iOS + Android fix
+   camera.play();
   };
 
   cameraModal.classList.remove("hidden");
   cameraModal.style.display = "flex";
  }).catch(err=>{
   alert("Arka kamera açılamadı");
+  console.error(err);
  });
 }
 
