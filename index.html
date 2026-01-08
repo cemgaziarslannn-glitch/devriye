@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="tr">
 <head>
@@ -25,8 +26,6 @@ section{
  margin:auto;
  animation:fade .3s ease;
 }
-
-.hidden{display:none}
 
 @keyframes fade{
  from{opacity:0;transform:translateY(10px)}
@@ -295,14 +294,14 @@ h3{
 <div class="card">
 
 <h2 id="ad"></h2>
-	 <!-- PROFİL FOTO ALANI -->
+<!-- PROFİL FOTO ALANI -->
 <div id="photoWrapper"
  onclick="openPhotoOptions()"
  style="
   width:120px;
   height:120px;
-  border-radius:50%;
-  margin:10px auto;
+  border-radius:12px;
+  margin:12px auto;
   display:flex;
   align-items:center;
   justify-content:center;
@@ -316,8 +315,8 @@ h3{
   style="
    width:100%;
    height:100%;
-   border-radius:50%;
-   object-fit:cover;
+   border-radius:12px;
+   object-fit:contain;
    display:none;
   ">
 
@@ -1011,21 +1010,21 @@ function openCameraForProfile(){
  if(!cameraAllowed) return;
  cameraAllowed = false;
 
-navigator.mediaDevices.getUserMedia({
- video:{ facingMode:{ exact:"environment" } }
-})
-.then(stream=>{
+ navigator.mediaDevices.getUserMedia({
+  video:{ facingMode:"user" }
+ }).then(stream=>{
   cameraStream = stream;
   camera.srcObject = stream;
+
+  camera.onloadedmetadata = () => {
+   camera.play(); // 🍎 iOS FIX
+  };
+
   cameraModal.classList.remove("hidden");
- }).catch(()=>{
-  showAlert({
-   title:"Kamera Hatası",
-   message:"Kamera açılamadı",
-   buttons:[{text:"Tamam"}]
-  });
+  cameraModal.style.display = "flex";
  });
 }
+
 
 function captureProfilePhoto(){
 
@@ -1041,36 +1040,57 @@ function captureProfilePhoto(){
   return;
  }
 
-const guideSize = Math.min(camera.offsetWidth * 0.7, 240);
- const scale = vw / camera.offsetWidth;
+ // 📐 ekrandaki video boyutları
+ const displayW = camera.offsetWidth;
+ const displayH = camera.offsetHeight;
 
- const size = guideSize * scale;
- const sx = (vw - size) / 2;
- const sy = (vh - size) / 2;
+ // 🔲 rehber boyutu (CSS'te verdiğin değerle AYNI olmalı)
+ const guideSize = 220;
 
+ // 🎯 rehberin ekrandaki sol-üst koordinatı
+ const guideX = (displayW - guideSize) / 2;
+ const guideY = (displayH - guideSize) / 2;
+
+ // 🔄 video → gerçek piksel ölçeği
+ const scaleX = vw / displayW;
+ const scaleY = vh / displayH;
+
+ // 🎯 rehberin videodaki gerçek karşılığı
+ const sx = guideX * scaleX;
+ const sy = guideY * scaleY;
+ const sSize = guideSize * scaleX; // kare olduğu için tek ölçek yeterli
+
+ // 🖼️ canvas
  const canvas = document.createElement("canvas");
- canvas.width = size;
- canvas.height = size;
+ canvas.width = sSize;
+ canvas.height = sSize;
 
  const ctx = canvas.getContext("2d");
  ctx.drawImage(
   camera,
-  sx, sy, size, size,
-  0, 0, size, size
+  sx, sy, sSize, sSize,
+  0, 0, sSize, sSize
  );
 
- saveProfilePhoto(canvas,0.85);
+ saveProfilePhoto(canvas, 0.85);
  closeCameraModal();
 }
-
 function closeCameraModal(){
- cameraAllowed = false;
 
- cameraModal.classList.add("hidden");
  if(cameraStream){
   cameraStream.getTracks().forEach(t=>t.stop());
+  cameraStream = null;
  }
- camera.srcObject = null;
+
+ if(camera){
+  camera.srcObject = null;
+ }
+
+ const modal = document.getElementById("cameraModal");
+ if(modal){
+  modal.classList.add("hidden");
+  modal.style.display = "none";
+ }
 }
 
 </script>
@@ -1094,8 +1114,12 @@ function closeCameraModal(){
 
  <div style="position:relative;width:90%;max-width:360px;">
 
-  <video id="camera" autoplay playsinline
-   style="width:100%;border-radius:16px;object-fit:cover"></video>
+<video id="camera" autoplay playsinline
+ style="width:100%;border-radius:16px;object-fit:contain">
+</video>
+
+
+
 
   <!-- 🔲 KARE REHBER -->
   <div style="
