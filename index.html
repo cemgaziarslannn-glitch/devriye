@@ -1053,28 +1053,23 @@ function captureProfilePhoto(){
   return;
  }
 
- // 📐 videonun ekrandaki gerçek boyutu
- const rect = camera.getBoundingClientRect();
- const renderedW = rect.width;
- const renderedH = rect.height;
+ const videoRect = camera.getBoundingClientRect();
 
- // 🔲 rehber (CSS ile birebir)
+ // 🔲 rehber kare (CSS ile birebir)
  const guideSize = 220;
 
- // rehberin ekrandaki SOL-ÜST koordinatı
- const guideX = (renderedW - guideSize) / 2;
- const guideY = (renderedH - guideSize) / 2;
+ const guideLeft = videoRect.left + (videoRect.width - guideSize) / 2;
+ const guideTop  = videoRect.top  + (videoRect.height - guideSize) / 2;
 
- // 🎯 video → ekran ölçekleri
- const scaleX = vw / renderedW;
- const scaleY = vh / renderedH;
+ // video → ekran ölçekleri
+ const scaleX = vw / videoRect.width;
+ const scaleY = vh / videoRect.height;
 
- // 🎯 videodaki gerçek crop alanı
- const sx = guideX * scaleX;
- const sy = guideY * scaleY;
- const sSize = guideSize * Math.min(scaleX, scaleY);
+ // 🎯 rehberin videodaki GERÇEK karşılığı
+ const sx = (guideLeft - videoRect.left) * scaleX;
+ const sy = (guideTop  - videoRect.top ) * scaleY;
+ const sSize = guideSize * scaleX; // kare olduğu için tek ölçek yeterli
 
- // 🖼️ canvas
  const canvas = document.createElement("canvas");
  canvas.width = sSize;
  canvas.height = sSize;
@@ -1087,24 +1082,38 @@ function captureProfilePhoto(){
  );
 
  saveProfilePhoto(canvas, 0.85);
- closeCameraModal();
+}
+
+function captureAndClose(){
+
+ // 1️⃣ önce FOTOĞRAFI ÇEK
+ captureProfilePhoto();
+
+ // 2️⃣ sonra MODALI KAPAT
+ setTimeout(()=>{
+  closeCameraModal();
+ }, 100);
 }
 
 function closeCameraModal(){
 
+ const modal = document.getElementById("cameraModal");
+ const video = document.getElementById("camera");
+
+ // modalı kapat
+ modal.classList.add("hidden");
+ modal.style.display = "none";
+
+ // kamerayı kapat
  if(cameraStream){
-  cameraStream.getTracks().forEach(t=>t.stop());
+  cameraStream.getTracks().forEach(track => track.stop());
   cameraStream = null;
  }
 
- if(camera){
-  camera.srcObject = null;
- }
-
- const modal = document.getElementById("cameraModal");
- if(modal){
-  modal.classList.add("hidden");
-  modal.style.display = "none";
+ // videoyu sıfırla
+ if(video){
+  video.pause();
+  video.srcObject = null;
  }
 }
 
@@ -1151,9 +1160,10 @@ function closeCameraModal(){
    pointer-events:none;
   "></div>
 
-  <button onclick="captureProfilePhoto()" style="margin-top:14px;width:100%">
-   📸 Profil Fotoğrafı Oluştur
-  </button>
+ <button onclick="captureAndClose()" style="margin-top:14px;width:100%">
+ 📸 Profil Fotoğrafı Oluştur
+</button>
+
 
   <button onclick="closeCameraModal()"
    style="margin-top:8px;width:100%;background:#ff4d4d;color:#fff">
