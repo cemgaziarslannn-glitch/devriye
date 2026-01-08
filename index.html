@@ -1038,7 +1038,6 @@ function openCameraForProfile(){
 }
 
 
-
 function captureProfilePhoto(){
 
  const vw = camera.videoWidth;
@@ -1053,22 +1052,45 @@ function captureProfilePhoto(){
   return;
  }
 
- const videoRect = camera.getBoundingClientRect();
+ const rect = camera.getBoundingClientRect();
 
- // 🔲 rehber kare (CSS ile birebir)
+ // rehber kare (CSS ile birebir)
  const guideSize = 220;
 
- const guideLeft = videoRect.left + (videoRect.width - guideSize) / 2;
- const guideTop  = videoRect.top  + (videoRect.height - guideSize) / 2;
+ // rehberin ekrandaki merkezi
+ const guideCenterX = rect.width / 2;
+ const guideCenterY = rect.height / 2;
 
- // video → ekran ölçekleri
- const scaleX = vw / videoRect.width;
- const scaleY = vh / videoRect.height;
+ // video ve ekran oranları
+ const videoRatio = vw / vh;
+ const viewRatio  = rect.width / rect.height;
 
- // 🎯 rehberin videodaki GERÇEK karşılığı
- const sx = (guideLeft - videoRect.left) * scaleX;
- const sy = (guideTop  - videoRect.top ) * scaleY;
- const sSize = guideSize * scaleX; // kare olduğu için tek ölçek yeterli
+ let renderedW, renderedH, offsetX = 0, offsetY = 0;
+
+ // 📌 object-fit: cover telafisi
+ if(videoRatio > viewRatio){
+  // video yatay kırpılmış
+  renderedH = rect.height;
+  renderedW = renderedH * videoRatio;
+  offsetX = (renderedW - rect.width) / 2;
+ }else{
+  // video dikey kırpılmış (SENİN DURUMUN)
+  renderedW = rect.width;
+  renderedH = renderedW / videoRatio;
+  offsetY = (renderedH - rect.height) / 2;
+ }
+
+ const scaleX = vw / renderedW;
+ const scaleY = vh / renderedH;
+
+ // rehberin video koordinatları
+ const sx = Math.round(
+  (guideCenterX - guideSize/2 + offsetX) * scaleX
+ );
+ const sy = Math.round(
+  (guideCenterY - guideSize/2 + offsetY) * scaleY
+ );
+ const sSize = Math.round(guideSize * scaleX);
 
  const canvas = document.createElement("canvas");
  canvas.width = sSize;
@@ -1084,38 +1106,6 @@ function captureProfilePhoto(){
  saveProfilePhoto(canvas, 0.85);
 }
 
-function captureAndClose(){
-
- // 1️⃣ önce FOTOĞRAFI ÇEK
- captureProfilePhoto();
-
- // 2️⃣ sonra MODALI KAPAT
- setTimeout(()=>{
-  closeCameraModal();
- }, 100);
-}
-
-function closeCameraModal(){
-
- const modal = document.getElementById("cameraModal");
- const video = document.getElementById("camera");
-
- // modalı kapat
- modal.classList.add("hidden");
- modal.style.display = "none";
-
- // kamerayı kapat
- if(cameraStream){
-  cameraStream.getTracks().forEach(track => track.stop());
-  cameraStream = null;
- }
-
- // videoyu sıfırla
- if(video){
-  video.pause();
-  video.srcObject = null;
- }
-}
 
 </script>
 <div id="appAlert" class="hidden">
