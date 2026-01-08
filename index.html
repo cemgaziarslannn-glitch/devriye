@@ -1053,35 +1053,26 @@ function captureProfilePhoto(){
   return;
  }
 
- // 📐 ekrandaki video boyutları
- const displayW = camera.offsetWidth;
- const displayH = camera.offsetHeight;
+ // 📐 videonun ekrandaki gerçek boyutu
+ const rect = camera.getBoundingClientRect();
+ const renderedW = rect.width;
+ const renderedH = rect.height;
 
- // 🔲 rehber boyutu (CSS'te verdiğin değerle AYNI olmalı)
+ // 🔲 rehber (CSS ile birebir)
  const guideSize = 220;
 
-const rect = camera.getBoundingClientRect();
+ // rehberin ekrandaki SOL-ÜST koordinatı
+ const guideX = (renderedW - guideSize) / 2;
+ const guideY = (renderedH - guideSize) / 2;
 
-// ekranda videonun GERÇEK render alanı
-const renderedW = rect.width;
-const renderedH = rect.height;
+ // 🎯 video → ekran ölçekleri
+ const scaleX = vw / renderedW;
+ const scaleY = vh / renderedH;
 
-// video → ekran ölçekleri
-const scaleX = vw / renderedW;
-const scaleY = vh / renderedH;
-
-// rehberin videodaki tam karşılığı
-const sx = (guideX) * scaleX;
-const sy = (guideY) * scaleY;
-
-// ⚠️ EN KRİTİK SATIR
-const sSize = guideSize * Math.min(scaleX, scaleY);
-
-
- // 🎯 rehberin videodaki gerçek karşılığı
+ // 🎯 videodaki gerçek crop alanı
  const sx = guideX * scaleX;
  const sy = guideY * scaleY;
- const sSize = guideSize * scaleX; // kare olduğu için tek ölçek yeterli
+ const sSize = guideSize * Math.min(scaleX, scaleY);
 
  // 🖼️ canvas
  const canvas = document.createElement("canvas");
@@ -1098,6 +1089,7 @@ const sSize = guideSize * Math.min(scaleX, scaleY);
  saveProfilePhoto(canvas, 0.85);
  closeCameraModal();
 }
+
 function closeCameraModal(){
 
  if(cameraStream){
